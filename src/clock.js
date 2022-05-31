@@ -1,16 +1,20 @@
 'use strict';
 
-function getCurrentTime() {
-  const date = new Date();
-  const hours = date.getHours();
-  const minutes = date.getMinutes();
+const DEFAULT_TIME = 1*60;
+let remainingTimeSec = DEFAULT_TIME;
 
-  let time = '';
-  time += hours;
-  time += ':';
-  time += minutes < 10 ? '0' + minutes : minutes;
-
-  return time;
+function updateTimer() {
+  if (remainingTimeSec > 0) {
+    remainingTimeSec -= 1;
+  }
 }
 
-export default getCurrentTime;
+function setTimer(duration=DEFAULT_TIME) {
+  remainingTimeSec = duration;
+}
+
+function getTimer(){
+  return remainingTimeSec;
+}
+
+export {setTimer, getTimer, updateTimer};

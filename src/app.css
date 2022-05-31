@@ -11,7 +11,7 @@
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Open Sans',
     'Helvetica Neue', sans-serif;
-  background-image: linear-gradient(to right, #ec6ead, #3494e6);
+  background-image: linear-gradient(to right, #CDF7F6, #8FB8DE, #9B5094);
   -webkit-font-smoothing: antialiased;
   color: #fff;
 }
@@ -27,11 +27,12 @@ body {
 }
 
 .day {
-  font-size: 14px;
+  font-size: 30px;
   font-weight: 600;
+  color: #fff;
 }
 
-.clock {
+.pomodoro_clock {
   font-size: 80px;
   font-weight: 600;
 }

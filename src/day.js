@@ -1,17 +1,6 @@
-const DAYS = [
-  'Sunday',
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-];
-
+'use strict';
 function getDay() {
-  const day = new Date().getDay();
-
-  return DAYS[day];
+  return new Date().toLocaleString();
 }
 
 export default getDay;
