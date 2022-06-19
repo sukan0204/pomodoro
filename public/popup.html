@@ -1,26 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Pomodoro</title>
-    <!--link rel="stylesheet" href="popup.css" /-->
+  <meta charset="UTF-8">
+  <title>Pomodoro</title>
+  <link rel="stylesheet" href="https://unpkg.com/purecss@2.1.0/build/pure-min.css" integrity="sha384-yHIFVG6ClnONEA5yB5DJXfW2/KC173DIQrYoZMEtBvGzmf0PKiGyNEqe9N6BNDBH" crossorigin="anonymous">
+  <link rel="stylesheet" href="app.css" />
 </head>
 <body>
-  <div class="app">
-    <p class="counter-label">Counter</p>
-    <div id="counter" class="counter"></div>
-    <div class="button-container">
-    <button id="openTab">Click Me</button>
-    </div>
+  <div class="container">
+    <p>
+    <span id="day" class="day"></span>
+    </p>
+    <div id="pomodoro_clock" class="pomodoro_clock"></div>
+
+    <hr class="divider" />
+    <button id="button" class="button dark-button pure-button">Start</button>
   </div>
+  <script src="app.js"></script>
 
-  <script src="popup.js"></script>
-
-  <!--
-    This HTML file opens when you click on icon from the toolbar.
-
-    To begin the development, run `npm run watch`.
-    To create a production bundle, use `npm run build`.
-  -->
 </body>
 </html>

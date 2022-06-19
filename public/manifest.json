@@ -14,9 +14,25 @@
     "default_popup":  "popup.html"
   },
   "permissions": [
-    "tabs"
+    "tabs",
+    "alarms",
+    "notifications",
+    "storage"
   ],
-  "chrome_url_overrides": {
-    "newtab": "index.html"
-  }
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "run_at": "document_idle",
+      "js": [
+        "contentScript.js"
+      ]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+    "resources": ["assets/mixkit-service-bell-931.wav"],
+    "matches": ["<all_urls>"]
+    }]
 }

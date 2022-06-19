@@ -1,65 +1,48 @@
-'use strict';
+"use strict";
 
-import getDay from './day';
-import {setTimer, getTimer, updateTimer} from './clock.js';
-import './app.css';
+import getDay from "./day";
+import { Button } from "./button.js";
+import { doneTimer, startTimer, updateTimer } from "./clock.js";
+import "./app.css";
+import {
+  getTimerData,
+  initializeTimerConst,
+  CLOCK_STATUS,
+  Status,
+  getRemainingTimeFromStorage,
+} from "./storage.js";
 
-(function() {
-  let started = false;
-  let button = document.getElementById('button');
-  let currentInterval;
-  button.innerText = "Start";
-  button.addEventListener("click", clickButton);
-
+(function () {
+  // Storage
+  initializeTimerConst();
   function setDay() {
     const day = getDay();
 
-    document.getElementById('day').innerHTML = day;
-  }
-
-  function showTimer() {
-    let currentTime = getTimer();
-    let min = Math.floor(currentTime / 60);
-    let sec = currentTime % 60;
-    let remainingTime = `${min}:`+`${sec}`.padStart(2, '0');
-    if (currentTime === 0) {
-      clearInterval(currentInterval);
-    }
-    document.getElementById('pomodoro_clock').innerHTML = remainingTime;
-  }
-
-  function clickButton() {
-    if (started) {
-      button.innerText = "Start";
-      started = false;
-      clearInterval(currentInterval);
-    }
-    else {
-      button.innerText = "Pause";
-      started = true;
-      currentInterval = setInterval(updateTimer, 1000);
-    }
+    document.getElementById("day").innerHTML = day;
   }
 
   function setupDashboard() {
+    let button = new Button(document.getElementById("button"));
+    updateTimer(doneTimer);
+    getTimerData((result) => {
+      if (result[CLOCK_STATUS] === Status.Started) {
+        console.log("timer started");
+        getRemainingTimeFromStorage(result, (remainingTime) => {
+          if (remainingTime > 0) {
+            startTimer(remainingTime, () => {
+              button.setDone();
+            });
+          } else {
+            // set to done or reset
+            doneTimer();
+          }
+        });
+      }
+      button.set(result[CLOCK_STATUS]);
+    });
     setDay();
-    showTimer();
     setInterval(setDay, 1000);
-    setInterval(showTimer, 1000);
   }
 
   setupDashboard();
-
-  // Communicate with background file by sending a message
-  chrome.runtime.sendMessage(
-    {
-      type: 'GREETINGS',
-      payload: {
-        message: 'Hello, my name is Ove. I am from Override app.',
-      },
-    },
-    response => {
-      console.log(response.message);
-    }
-  );
 })();
