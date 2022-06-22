@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "My Chrome Extension",
   "icons": {
-    "64": "icons/icons8-tomato-64.png"
+    "64": "icons/icons8-cherry-tomato-60-inactive.png"
   },
   "background": {
     "service_worker": "background.js"

@@ -5,39 +5,25 @@ let currentInterval = null;
 import {
   getTimerData,
   startTimerData,
-  CLOCK_STATUS,
   pauseTimerData,
+  doneTimerData,
   resetClockStatus,
+  CLOCK_STATUS,
   Status,
   getRemainingTimeFromStorage,
-  doneTimerData,
-  POMODORO_TIME_MIN,
+  POMODORO_TIME_SEC,
 } from "./storage.js";
 
+import { setIconStatus } from "./icon.js";
+
 function startTimer(remainingTimeMs, cb) {
-  // Get remaining time from storage
-  // background script will set alarm
-  chrome.runtime.sendMessage(
-    {
-      type: ALARM_NAME,
-      payload: {
-        seconds: remainingTimeMs / 1000,
-      },
-    },
-    (response) => {
-      console.log(response.message);
-    }
-  );
-
-  startTimerData(remainingTimeMs);
-
-  currentInterval = setInterval(updateTimer, 500, () => {
-    doneTimerData(() => {
-      clearInterval(currentInterval);
-      if (cb !== undefined) {
-        cb();
-      }
-    });
+  chrome.alarms.create("alarm", {
+    delayInMinutes: remainingTimeMs / 60000,
+  });
+  startTimerData(remainingTimeMs, setIconStatus);
+  updateTimer(() => {
+    doneTimer();
+    button.setDone();
   });
 }
 
@@ -54,19 +40,34 @@ function getRemainingTime(yes_cb, done_cb) {
         console.log("getRemainingTime done callback");
         done_cb();
       }
+    } else {
+      console.log("getRemainingTime no callback");
+      done_cb();
     }
-    //else {
-    //  console.log("getRemainingTime no callback");
-    //  done_cb();
-    //}
   });
 }
 
 function pauseTimer(cb) {
-  //updateTimer();
   clearInterval(currentInterval);
   chrome.alarms.clear("alarm");
-  pauseTimerData(cb);
+  pauseTimerData((result) => {
+    cb(result);
+    setIconStatus(result);
+  });
+}
+
+let globalRemainingTime;
+function simpleUpdateTimer(doneCallback) {
+  globalRemainingTime -= 1;
+  console.log(`simpleUpdateTimer ${globalRemainingTime}`);
+  if (globalRemainingTime > 0) {
+    let min = Math.floor(globalRemainingTime / 60);
+    let sec = globalRemainingTime % 60;
+    let remainingTimeText = `${min}:` + `${sec}`.padStart(2, "0");
+    document.getElementById("pomodoro_clock").innerHTML = remainingTimeText;
+  } else {
+    doneCallback();
+  }
 }
 
 function updateTimer(doneCallback) {
@@ -75,11 +76,14 @@ function updateTimer(doneCallback) {
     if (result[CLOCK_STATUS] === Status.Started) {
       getRemainingTime(
         (remainingTime) => {
+          console.log("updateTimer-remainingtime" + remainingTime);
           let min = Math.floor(remainingTime / 60);
           let sec = remainingTime % 60;
           let remainingTimeText = `${min}:` + `${sec}`.padStart(2, "0");
           document.getElementById("pomodoro_clock").innerHTML =
             remainingTimeText;
+          globalRemainingTime = remainingTime;
+          currentInterval = setInterval(simpleUpdateTimer, 1000, doneCallback);
         },
         () => {
           console.log("setting to 00:00");
@@ -94,28 +98,39 @@ function updateTimer(doneCallback) {
         let remainingTimeSec = Math.floor(remainingTime / 1000);
         if (remainingTime <= 0) {
           doneCallback();
+        } else {
+          let min = Math.floor(remainingTimeSec / 60);
+          let sec = remainingTimeSec % 60;
+          let remainingTimeText = `${min}:` + `${sec}`.padStart(2, "0");
+          document.getElementById("pomodoro_clock").innerHTML =
+            remainingTimeText;
         }
-        let min = Math.floor(remainingTimeSec / 60);
-        let sec = remainingTimeSec % 60;
-        let remainingTimeText = `${min}:` + `${sec}`.padStart(2, "0");
-        document.getElementById("pomodoro_clock").innerHTML = remainingTimeText;
       });
     } else if (result[CLOCK_STATUS] === Status.NotStarted) {
-      document.getElementById(
-        "pomodoro_clock"
-      ).innerHTML = `${result[POMODORO_TIME_MIN]}:00`;
+      let pomodoro = result[POMODORO_TIME_SEC];
+      let min = Math.floor(pomodoro / 60);
+      let sec = pomodoro % 60;
+      let remainingTimeText = `${min}:` + `${sec}`.padStart(2, "0");
+      document.getElementById("pomodoro_clock").innerHTML = remainingTimeText;
     }
   });
 }
 
 function resetTimer(cb) {
-  resetClockStatus(cb);
+  resetClockStatus((result) => {
+    cb(result);
+    setIconStatus(result);
+  });
 }
 
 function doneTimer(cb) {
   doneTimerData(() => {
+    clearInterval(currentInterval);
     updateTimer();
-    cb();
+    if (cb !== undefined) {
+      cb(result);
+    }
+    setIconStatus(result);
   });
 }
 

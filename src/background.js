@@ -1,25 +1,12 @@
 "use strict";
-
+import { setIconStatus } from "./icon.js";
+import { getTimerData } from "./storage.js";
 // With background scripts you can communicate extension files.
 // For more information on background script,
 // See https://developer.chrome.com/extensions/background_pages
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.type === "alarm") {
-    const message = "setting alarm";
-    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-      // Toggle the pinned status
-      var current = tabs[0];
-      chrome.action.setBadgeText({ text: current.id.toString() });
-    });
-
-    chrome.alarms.create("alarm", {
-      delayInMinutes: request.payload.seconds / 60,
-    });
-    sendResponse({
-      message,
-    });
-  }
+getTimerData((result) => {
+  setIconStatus(result);
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
@@ -38,4 +25,5 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     type: "basic",
     message: `Alarm ${alarm.name} is done`,
   });
+  chrome.alarms.clear(alarm.name);
 });
