@@ -12,7 +12,6 @@ const config = (env, argv) =>
       app: PATHS.src + "/app.js",
       background: PATHS.src + "/background.js",
       contentScript: PATHS.src + "/contentScript.js",
-      audio: PATHS.src + "/audio.js",
     },
     devtool: argv.mode === "production" ? false : "source-map",
   });

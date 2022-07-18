@@ -1,7 +1,7 @@
 import {
   Status as ClockStatus,
   CLOCK_STATUS,
-  LAST_REMAINING_TIME,
+  LAST_REMAINING_TIME_SEC,
 } from "./storage.js";
 
 function setActiveIcon() {
@@ -13,11 +13,10 @@ function setActiveIcon() {
   });
 }
 
-function setPausedIcon(remainingTimeMs) {
+function setPausedIcon(remainingTimeSec) {
   chrome.action.setIcon({
     path: "icons/icons8-cherry-tomato-60-paused.png",
   });
-  let remainingTimeSec = Math.floor(remainingTimeMs / 1000);
   let min = Math.floor(remainingTimeSec / 60);
   let sec = remainingTimeSec % 60;
   let remainingTimeText = `${min}:` + `${sec}`.padStart(2, "0");
@@ -29,6 +28,9 @@ function setPausedIcon(remainingTimeMs) {
 function setRestIcon() {
   chrome.action.setIcon({
     path: "icons/icons8-cherry-tomato-60-rest.png",
+  });
+  chrome.action.setBadgeText({
+    text: "",
   });
 }
 
@@ -57,7 +59,7 @@ function setIconStatus(result) {
   } else if (status === ClockStatus.Started) {
     setActiveIcon();
   } else if (status === ClockStatus.Paused) {
-    setPausedIcon(result[LAST_REMAINING_TIME]);
+    setPausedIcon(result[LAST_REMAINING_TIME_SEC]);
   } else if (status === ClockStatus.Done) {
     setDoneIcon();
   } else if (status === ClockStatus.Break) {
