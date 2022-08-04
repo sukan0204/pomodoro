@@ -1,8 +1,8 @@
 import {
-  Status as ClockStatus,
-  CLOCK_STATUS,
   LAST_REMAINING_TIME_SEC,
-} from "./storage.js";
+  CLOCK_STATUS,
+  ClockStatus,
+} from "./constants.js";
 
 function setActiveIcon() {
   chrome.action.setIcon({

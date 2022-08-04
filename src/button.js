@@ -1,24 +1,12 @@
 "use strict";
 
-import { startTimer, updateTimer, resetTimer, pauseTimer } from "./clock.js";
-import {
-  Status as ClockStatus,
-  getTimerData,
-  POMODORO_TIME_SEC,
-} from "./storage.js";
-
-export const Status = {
-  Start: "Start",
-  Pause: "Pause",
-  Resume: "Resume",
-  Reset: "Reset",
-};
+import { ButtonStatus, ClockStatus } from "./constants.js";
+import { ButtonClickedMessage } from "./message.js";
 
 export class Button {
   constructor(button, stopButton) {
     this.button = button;
-    this.button.innerText = Status.Start;
-    this.button_status = Status.Pause;
+    this.button.innerText = ButtonStatus.Start;
     this.stopButton = stopButton;
     this.button.addEventListener("click", () => {
       this.clickButton();
@@ -31,37 +19,41 @@ export class Button {
   set(status) {
     this.stopButton.style.visibility = "hidden";
     if (status === ClockStatus.NotStarted || status === undefined) {
-      this.button.innerText = Status.Start;
+      this.button.innerText = ButtonStatus.Start;
     } else if (status === ClockStatus.Started || status === ClockStatus.Break) {
-      this.button.innerText = Status.Pause;
+      this.button.innerText = ButtonStatus.Pause;
     } else if (status === ClockStatus.Paused) {
-      this.button.innerText = Status.Resume;
+      this.button.innerText = ButtonStatus.Resume;
       this.stopButton.style.visibility = "visible";
     } else if (status === ClockStatus.Done) {
-      this.button.innerText = Status.Reset;
+      this.button.innerText = ButtonStatus.Reset;
     }
   }
   clickStopButton() {
-    chrome.runtime.sendMessage({ type: Status.Reset });
-    this.button.innerText = Status.Start;
+    chrome.runtime.sendMessage({
+      message: new ButtonClickedMessage(ButtonStatus.Reset),
+    });
+    this.button.innerText = ButtonStatus.Start;
     this.stopButton.style.visibility = "hidden";
   }
   clickButton() {
     this.stopButton.style.visibility = "hidden";
-    chrome.runtime.sendMessage({ type: this.button.innerText });
+    chrome.runtime.sendMessage({
+      message: new ButtonClickedMessage(this.button.innerText),
+    });
     switch (this.button.innerText) {
-      case Status.Start:
-        this.button.innerText = Status.Pause;
+      case ButtonStatus.Start:
+        this.button.innerText = ButtonStatus.Pause;
         break;
-      case Status.Resume:
-        this.button.innerText = Status.Pause;
+      case ButtonStatus.Resume:
+        this.button.innerText = ButtonStatus.Pause;
         break;
-      case Status.Pause:
-        this.button.innerText = Status.Resume;
+      case ButtonStatus.Pause:
+        this.button.innerText = ButtonStatus.Resume;
         this.stopButton.style.visibility = "visible";
         break;
-      case Status.Reset:
-        this.button.innerText = Status.Start;
+      case ButtonStatus.Reset:
+        this.button.innerText = ButtonStatus.Start;
         break;
       default:
         break;

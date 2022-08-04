@@ -1,6 +1,6 @@
 "use strict";
 
-import { Status } from "./storage.js";
+import { ClockStatus } from "./constants.js";
 
 export class Clock {
   constructor(clock_element) {
@@ -12,7 +12,10 @@ export class Clock {
   setUp(clock_status, remainingTimeSec) {
     clearInterval(this.currentInterval);
     this.set(remainingTimeSec);
-    if (clock_status == Status.Started || clock_status == Status.Break) {
+    if (
+      clock_status == ClockStatus.Started ||
+      clock_status == ClockStatus.Break
+    ) {
       remainingTimeSec -= 1;
       this.currentInterval = setInterval(() => {
         if (remainingTimeSec < 0) {

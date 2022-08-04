@@ -1,24 +1,30 @@
 "use strict";
 import { setIconStatus } from "./icon.js";
 import {
-  POMODORO_TIME_SEC,
-  CLOCK_STATUS,
+  ALARM_NAME,
   LAST_REMAINING_TIME_SEC,
+  POMODORO_TIME_SEC,
+  ButtonStatus,
+  CLOCK_STATUS,
+  ClockStatus,
+} from "./constants.js";
+import {
   getTimerData,
   stepNext,
   initializeTimerConst,
   initiateTimerData,
   resetClockStatus,
-  Status,
   resumeTimerData,
   pauseTimerData,
 } from "./storage.js";
-import { Status as ButtonStatus } from "./button.js";
-// With background scripts you can communicate extension files.
-// For more information on background script,
-// See https://developer.chrome.com/extensions/background_pages
 
-const ALARM_NAME = "alarm";
+import {
+  parseMessage,
+  UIUpdateMessage,
+  ButtonClickedMessage,
+  GetTimerStatusMessage,
+} from "./message.js";
+
 initializeTimerConst();
 resetClockStatus();
 chrome.alarms.clear(ALARM_NAME);
@@ -30,151 +36,162 @@ function initiateTimer(remainingTimeSec) {
   });
 }
 
-function resumeTimer() {
-  console.log("resume timer");
-  resumeTimerData((result) => {
-    console.log(result);
-    if (result[LAST_REMAINING_TIME_SEC] < 1) {
-      console.log("Remaining time too small");
-      setTimeout(() => {
-        stepNext(result, (nextStep) => {
-          console.log(nextStep);
-          chrome.notifications.create(Math.random().toString(), {
-            title: "Pomodoro Alarm",
-            iconUrl: "icons/icons8-tomato-64.png",
-            type: "basic",
-            message: _getMessage(nextStep[CLOCK_STATUS]),
-          });
-          if (nextStep[LAST_REMAINING_TIME_SEC]) {
-            console.log(
-              `Starting alarm for ${nextStep[CLOCK_STATUS]}, ${nextStep[LAST_REMAINING_TIME_SEC]}sec`
-            );
-            chrome.alarms.create(ALARM_NAME, {
-              delayInMinutes: nextStep[LAST_REMAINING_TIME_SEC] / 60,
-            });
-          }
-          setIconStatus(nextStep);
-          chrome.runtime.sendMessage({
-            time: nextStep[LAST_REMAINING_TIME_SEC],
-            ...nextStep,
-          });
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log(request);
+  let message = parseMessage(request.message);
+  if (message.type === ButtonClickedMessage.type) {
+    _handleButtonClickedMessage(message);
+  }
+  if (message.type === GetTimerStatusMessage.type) {
+    _handleGetTimerStatusMessage();
+  }
+  return true;
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  // Once an alarm is done, go to the next step after a couple seconds
+  getTimerData((result) => {
+    _stepNext(result);
+  });
+});
+
+function _getMessage(clock_status) {
+  if (clock_status == ClockStatus.Break) {
+    return "Time to take a break";
+  } else if (clock_status == ClockStatus.Started) {
+    return "Time to focus";
+  } else if (clock_status == ClockStatus.Done) {
+    return "Great work. Pomodoro Finished";
+  }
+}
+
+function _stepNext(result) {
+  setTimeout(() => {
+    stepNext(result, (nextStep) => {
+      chrome.notifications.create(Math.random().toString(), {
+        title: "Pomodoro Alarm",
+        iconUrl: "icons/icons8-tomato-64.png",
+        type: "basic",
+        message: _getMessage(nextStep[CLOCK_STATUS]),
+      });
+      if (nextStep[LAST_REMAINING_TIME_SEC]) {
+        chrome.alarms.create(ALARM_NAME, {
+          delayInMinutes: nextStep[LAST_REMAINING_TIME_SEC] / 60,
         });
-      }, 2000);
+      }
+      setIconStatus(nextStep);
+      chrome.runtime.sendMessage({
+        message: new UIUpdateMessage(
+          nextStep[CLOCK_STATUS],
+          nextStep[LAST_REMAINING_TIME_SEC]
+        ),
+      });
+    });
+  }, 2000);
+}
+
+function _resumeTimer() {
+  resumeTimerData((result) => {
+    if (result[LAST_REMAINING_TIME_SEC] < 1) {
+      _stepNext(result);
     } else {
-      console.log(`creating alarm again ${result[LAST_REMAINING_TIME_SEC]}`);
       chrome.alarms.create(ALARM_NAME, {
         delayInMinutes: result[LAST_REMAINING_TIME_SEC] / 60,
       });
       chrome.runtime.sendMessage({
-        time: result[LAST_REMAINING_TIME_SEC],
-        ...result,
+        message: new UIUpdateMessage(
+          result[CLOCK_STATUS],
+          result[LAST_REMAINING_TIME_SEC]
+        ),
       });
     }
     setIconStatus(result);
   });
 }
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log(request);
-  if (request.type === ButtonStatus.Start) {
+function _handleButtonClickedMessage(message) {
+  if (message.clicked_button_status === ButtonStatus.Start) {
     getTimerData((result) => {
       initiateTimer(result[POMODORO_TIME_SEC]);
       chrome.runtime.sendMessage({
-        time: result[POMODORO_TIME_SEC],
-        [CLOCK_STATUS]: Status.Started,
+        message: new UIUpdateMessage(
+          ClockStatus.Started,
+          result[POMODORO_TIME_SEC]
+        ),
       });
     });
-  } else if (request.type === ButtonStatus.Pause) {
+  } else if (message.clicked_button_status === ButtonStatus.Pause) {
     chrome.alarms.clear(ALARM_NAME);
     pauseTimerData((result) => {
       chrome.runtime.sendMessage({
-        time: result[LAST_REMAINING_TIME_SEC],
-        [CLOCK_STATUS]: Status.Paused,
+        message: new UIUpdateMessage(
+          ClockStatus.Paused,
+          result[LAST_REMAINING_TIME_SEC]
+        ),
       });
       setIconStatus(result);
     });
-  } else if (request.type === ButtonStatus.Reset) {
+  } else if (message.clicked_button_status === ButtonStatus.Reset) {
     getTimerData((result) => {
       resetClockStatus();
-      setIconStatus({ [CLOCK_STATUS]: Status.NotStarted });
+      setIconStatus({ [CLOCK_STATUS]: ClockStatus.NotStarted });
       chrome.runtime.sendMessage({
-        time: result[POMODORO_TIME_SEC],
-        [CLOCK_STATUS]: Status.NotStarted,
+        message: new UIUpdateMessage(
+          ClockStatus.NotStarted,
+          result[POMODORO_TIME_SEC]
+        ),
       });
     });
-  } else if (request.type === ButtonStatus.Resume) {
-    resumeTimer();
-  }
-  if (request.type === "get_timer_status") {
-    getTimerData((result) => {
-      setIconStatus(result);
-      if (
-        result[CLOCK_STATUS] == Status.Started ||
-        result[CLOCK_STATUS] == Status.Break
-      ) {
-        chrome.alarms.get(ALARM_NAME, (alarmInfo) => {
-          if (alarmInfo != undefined) {
-            let remainingTime = Math.floor(
-              (alarmInfo.scheduledTime - new Date()) / 1000
-            );
-            let remainingTimeSec = Math.max(remainingTime, 0);
-            sendResponse({ time: remainingTimeSec, ...result });
-          } else {
-            sendResponse({ time: 0, ...result });
-          }
-        });
-      } else if (result[CLOCK_STATUS] == Status.Paused) {
-        sendResponse({ time: result[LAST_REMAINING_TIME_SEC], ...result });
-      } else if (result[CLOCK_STATUS] == Status.NotStarted) {
-        sendResponse({ time: result[POMODORO_TIME_SEC], ...result });
-      } else if (result[CLOCK_STATUS] == Status.Done) {
-        sendResponse({ time: 0, ...result });
-      }
-    });
-  }
-  return true;
-});
-
-function _getMessage(clock_status) {
-  if (clock_status == Status.Break) {
-    return "Time to take a break";
-  } else if (clock_status == Status.Started) {
-    return "Time to focus";
-  } else if (clock_status == Status.Done) {
-    return "Great work. Pomodoro Finished";
+  } else if (message.clicked_button_status === ButtonStatus.Resume) {
+    _resumeTimer();
   }
 }
 
-chrome.alarms.onAlarm.addListener((alarm) => {
-  console.log("Alarm done");
-  setTimeout(() => {
-    getTimerData((result) => {
-      stepNext(result, (nextStep) => {
-        console.log(nextStep);
-        chrome.notifications.create(Math.random().toString(), {
-          title: "Pomodoro Alarm",
-          iconUrl: "icons/icons8-tomato-64.png",
-          type: "basic",
-          message: _getMessage(nextStep[CLOCK_STATUS]),
-        });
-        if (nextStep[LAST_REMAINING_TIME_SEC]) {
-          console.log(
-            `Starting alarm for ${nextStep[CLOCK_STATUS]}, ${nextStep[LAST_REMAINING_TIME_SEC]}sec`
+function _handleGetTimerStatusMessage() {
+  getTimerData((result) => {
+    setIconStatus(result);
+    if (
+      result[CLOCK_STATUS] == ClockStatus.Started ||
+      result[CLOCK_STATUS] == ClockStatus.Break
+    ) {
+      chrome.alarms.get(ALARM_NAME, (alarmInfo) => {
+        if (alarmInfo != undefined) {
+          let remainingTime = Math.floor(
+            (alarmInfo.scheduledTime - new Date()) / 1000
           );
-          chrome.alarms.create(ALARM_NAME, {
-            delayInMinutes: nextStep[LAST_REMAINING_TIME_SEC] / 60,
+          let remainingTimeSec = Math.max(remainingTime, 0);
+          chrome.runtime.sendMessage({
+            message: new UIUpdateMessage(
+              result[CLOCK_STATUS],
+              remainingTimeSec
+            ),
+          });
+        } else {
+          chrome.runtime.sendMessage({
+            message: new UIUpdateMessage(result[CLOCK_STATUS], 0),
           });
         }
-        setIconStatus(nextStep);
-        chrome.runtime.sendMessage({
-          time: nextStep[LAST_REMAINING_TIME_SEC],
-          ...nextStep,
-        });
       });
-    });
-  }, 2000);
-
-  // find next step and optionally start next step
-});
+    } else if (result[CLOCK_STATUS] == ClockStatus.Paused) {
+      chrome.runtime.sendMessage({
+        message: new UIUpdateMessage(
+          result[CLOCK_STATUS],
+          result[LAST_REMAINING_TIME_SEC]
+        ),
+      });
+    } else if (result[CLOCK_STATUS] == ClockStatus.NotStarted) {
+      chrome.runtime.sendMessage({
+        message: new UIUpdateMessage(
+          result[CLOCK_STATUS],
+          result[POMODORO_TIME_SEC]
+        ),
+      });
+    } else if (result[CLOCK_STATUS] == ClockStatus.Done) {
+      chrome.runtime.sendMessage({
+        message: new UIUpdateMessage(result[CLOCK_STATUS], 0),
+      });
+    }
+  });
+}
 
 // Handle stepping Pomodoro, creating alarm, and updating Icon

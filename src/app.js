@@ -2,7 +2,7 @@
 
 import { Button } from "./button.js";
 import { Clock } from "./clock.js";
-import { CLOCK_STATUS } from "./storage.js";
+import { parseMessage, GetTimerStatusMessage } from "./message.js";
 import "./app.css";
 
 (function () {
@@ -12,16 +12,24 @@ import "./app.css";
       document.getElementById("stop")
     );
     let clock = new Clock(document.getElementById("pomodoro_clock"));
-    console.log("Setting up dashboard");
-    chrome.runtime.sendMessage({ type: "get_timer_status" }, (result) => {
-      console.log("get_timer_status");
-      console.log(result);
-      button.set(result[CLOCK_STATUS]);
-      clock.setUp(result[CLOCK_STATUS], result["time"]);
-    });
+    chrome.runtime.sendMessage(
+      { message: new GetTimerStatusMessage() },
+      (result) => {
+        if (result.message !== undefined) {
+          let message = parseMessage(result.message);
+          button.set(message.clock_status);
+          clock.setUp(message.clock_status, message.time);
+          console.log(message);
+        } else {
+          console.log("undefined message");
+        }
+      }
+    );
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-      button.set(request[CLOCK_STATUS]);
-      clock.setUp(request[CLOCK_STATUS], request["time"]);
+      console.log(request);
+      let message = parseMessage(request.message);
+      button.set(message.clock_status);
+      clock.setUp(message.clock_status, message.time);
       sendResponse({ done: "done" });
       return true;
     });
